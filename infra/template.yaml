@@ -313,6 +313,37 @@ Resources:
               if method == 'OPTIONS':
                   return {'statusCode': 200, 'headers': headers, 'body': ''}
 
+              # Helper to get IP and geolocation
+              def get_ip_and_geo(event):
+                  # Get IP from API Gateway
+                  req_headers = event.get('headers', {})
+                  ip = req_headers.get('x-forwarded-for', '').split(',')[0].strip()
+                  if not ip:
+                      ip = event.get('requestContext', {}).get('http', {}).get('sourceIp', '')
+
+                  geo = {}
+                  if ip and not ip.startswith(('10.', '172.', '192.168.', '127.')):
+                      try:
+                          # Use ip-api.com (free, no key needed, 45 req/min limit)
+                          geo_req = urllib.request.Request(
+                              f'http://ip-api.com/json/{ip}?fields=status,country,countryCode,region,regionName,city,lat,lon',
+                              headers={'User-Agent': 'Foomist-Lambda'}
+                          )
+                          with urllib.request.urlopen(geo_req, timeout=2) as resp:
+                              geo_data = json.loads(resp.read().decode('utf-8'))
+                              if geo_data.get('status') == 'success':
+                                  geo = {
+                                      'country': geo_data.get('country', ''),
+                                      'countryCode': geo_data.get('countryCode', ''),
+                                      'region': geo_data.get('regionName', ''),
+                                      'city': geo_data.get('city', ''),
+                                      'lat': geo_data.get('lat'),
+                                      'lon': geo_data.get('lon')
+                                  }
+                      except:
+                          pass  # Geolocation is best-effort
+                  return ip, geo
+
               try:
                   # ============================================
                   # ANALYTICS ENDPOINTS
@@ -321,6 +352,7 @@ Resources:
                       body = json.loads(event.get('body', '{}'))
                       table = dynamodb.Table(TABLE_NAME)
 
+                      ip, geo = get_ip_and_geo(event)
                       now = datetime.utcnow()
                       item = {
                           'visitorId': body.get('visitorId', str(uuid.uuid4())),
@@ -334,6 +366,8 @@ Resources:
                           'userAgent': body.get('userAgent', ''),
                           'screenSize': body.get('screenSize', ''),
                           'metadata': body.get('metadata', {}),
+                          'ip': ip,
+                          'geo': geo,
                           'expiresAt': int((now + timedelta(days=90)).timestamp())
                       }
                       table.put_item(Item=item)
@@ -344,6 +378,7 @@ Resources:
                       events = body.get('events', [])
                       table = dynamodb.Table(TABLE_NAME)
 
+                      ip, geo = get_ip_and_geo(event)
                       now = datetime.utcnow()
                       with table.batch_writer() as batch:
                           for evt in events[:25]:  # Max 25 per batch
@@ -356,6 +391,8 @@ Resources:
                                   'eventName': evt.get('eventName', ''),
                                   'page': evt.get('page', '/'),
                                   'metadata': evt.get('metadata', {}),
+                                  'ip': ip,
+                                  'geo': geo,
                                   'expiresAt': int((now + timedelta(days=90)).timestamp())
                               }
                               batch.put_item(Item=item)
