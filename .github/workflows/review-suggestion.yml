@@ -2,14 +2,14 @@ name: Review Data Suggestion
 
 on:
   issues:
-    types: [opened, labeled]
+    types:
+      - opened
+      - labeled
 
 jobs:
   review-suggestion:
-    # Only run on issues with the data-suggestion label
     if: contains(github.event.issue.labels.*.name, 'data-suggestion')
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
       issues: write
@@ -33,14 +33,11 @@ jobs:
         with:
           script: |
             const body = context.payload.issue.body;
-
-            // Extract JSON from code block
             const jsonMatch = body.match(/```json\n([\s\S]*?)\n```/);
             if (!jsonMatch) {
               core.setFailed('Could not extract suggestion data from issue body');
               return;
             }
-
             try {
               const data = JSON.parse(jsonMatch[1]);
               core.setOutput('suggestion_data', JSON.stringify(data));
@@ -58,7 +55,6 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # Create a prompt file for Claude (avoids injection from issue content)
           cat > /tmp/evaluate_prompt.txt << 'PROMPT_END'
           You are reviewing a data suggestion for a website that tracks human brain vs chip MIPS.
 
@@ -86,7 +82,6 @@ jobs:
           Do NOT output anything else. Do NOT modify any files yet. Just evaluate.
           PROMPT_END
 
-          # Run Claude Code with the evaluation prompt
           claude-code --print --dangerously-skip-permissions \
             -p "$(cat /tmp/evaluate_prompt.txt)
 
@@ -100,9 +95,7 @@ jobs:
           Fetch the source URL and verify the claim. Output only the JSON verdict." \
             2>/dev/null | tee /tmp/claude_output.txt
 
-          # Extract JSON from output
           if grep -q '"approved"' /tmp/claude_output.txt; then
-            # Find the JSON object in the output
             VERDICT=$(grep -o '{[^}]*"approved"[^}]*}' /tmp/claude_output.txt | head -1)
             echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
             echo "Verdict: $VERDICT"
@@ -123,11 +116,9 @@ jobs:
             exit 0
           fi
 
-          # Create a branch for the update
           BRANCH_NAME="data-update-issue-${{ github.event.issue.number }}"
           git checkout -b "$BRANCH_NAME"
 
-          # Run Claude Code to make the actual update
           claude-code --print --dangerously-skip-permissions \
             -p "Update the data in index.html based on this verified suggestion:
 
@@ -145,13 +136,11 @@ jobs:
 
           Make minimal changes. Only update what's necessary."
 
-          # Check if changes were made
           if git diff --quiet; then
             echo "No changes made"
             exit 0
           fi
 
-          # Commit and push
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
@@ -164,7 +153,6 @@ jobs:
 
           git push origin "$BRANCH_NAME"
 
-          # Create PR
           gh pr create \
             --title "Data update from suggestion #${{ github.event.issue.number }}" \
             --body "This PR was automatically created from a verified data suggestion.
@@ -231,7 +219,6 @@ jobs:
               body: comment
             });
 
-            // Close if rejected
             if (!approved) {
               await github.rest.issues.update({
                 owner: context.repo.owner,
