@@ -25,6 +25,9 @@ aws s3 sync ../. "s3://$BUCKET" \
   --exclude "infra/*" \
   --exclude "CLAUDE.md" \
   --exclude ".github/*" \
+  --exclude ".gitignore" \
+  --exclude ".DS_Store" \
+  --exclude ".claude/*" \
   --delete \
   --region "$REGION"
 
