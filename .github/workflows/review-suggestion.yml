@@ -107,6 +107,7 @@ jobs:
         if: fromJson(steps.evaluate.outputs.verdict).approved == true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERDICT='${{ steps.evaluate.outputs.verdict }}'
           RECOMMENDATION=$(echo "$VERDICT" | jq -r '.recommendation')
@@ -163,8 +164,6 @@ jobs:
 
           Closes #${{ github.event.issue.number }}" \
             --label "automated-update"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto-merge if high confidence
         if: fromJson(steps.evaluate.outputs.verdict).approved == true && fromJson(steps.evaluate.outputs.verdict).confidence == 'high'
