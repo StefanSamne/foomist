@@ -1,27 +1,21 @@
 #!/bin/bash
 set -e
 
+# Lambda code is now inline in template.yaml (CloudFormation)
+# This script triggers a stack update to deploy any Lambda changes
+
 REGION="ca-central-1"
-FUNCTION_NAME="foomist-create-issue"
-LAMBDA_DIR="../lambda/create-issue"
+STACK_NAME="foomist"
 
-echo "Installing dependencies..."
-cd "$LAMBDA_DIR"
-npm install --production
+echo "Updating Lambda via CloudFormation stack update..."
 
-echo "Creating deployment package..."
-zip -r function.zip index.js package.json node_modules
-
-echo "Deploying Lambda function..."
-aws lambda update-function-code \
-  --function-name "$FUNCTION_NAME" \
-  --zip-file fileb://function.zip \
+aws cloudformation update-stack \
+  --stack-name "$STACK_NAME" \
+  --template-body file://template.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
   --region "$REGION" \
-  --query 'LastModified' \
-  --output text
-
-echo "Cleaning up..."
-rm function.zip
+  --use-previous-template \
+  2>&1 || echo "No updates needed or update in progress"
 
 echo ""
-echo "Lambda deployed!"
+echo "To force Lambda code update, modify template.yaml and run ./deploy.sh"
