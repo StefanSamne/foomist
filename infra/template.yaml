@@ -298,9 +298,14 @@ Resources:
               path = event.get('rawPath', '/')
               method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
 
+              # Get origin from request for CORS
+              req_origin = event.get('headers', {}).get('origin', '')
+              allowed_origins = [f'https://{DOMAIN}', 'http://localhost:8000']
+              cors_origin = req_origin if req_origin in allowed_origins else f'https://{DOMAIN}'
+
               headers = {
                   'Content-Type': 'application/json',
-                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Origin': cors_origin,
                   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
               }
@@ -495,8 +500,8 @@ Resources:
                   return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
 
               except Exception as e:
-                  print(f"Error: {e}")
-                  return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
+                  print(f"Error: {e}")  # Log for debugging
+                  return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': 'Internal server error'})}
       Tags:
         - Key: Project
           Value: foomist
@@ -573,6 +578,9 @@ Resources:
       ApiId: !Ref ApiGateway
       StageName: '$default'
       AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 100
 
   LambdaPermission:
     Type: AWS::Lambda::Permission
