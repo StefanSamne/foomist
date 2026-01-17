@@ -1,0 +1,622 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Foom.ist - Human vs Silicon MIPS Crossover visualization'
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: foom.ist
+    Description: Domain name for the site
+
+  CertificateArn:
+    Type: String
+    Description: ARN of ACM certificate in us-east-1
+
+  HostedZoneId:
+    Type: String
+    Description: Route 53 Hosted Zone ID for the domain
+
+  GitHubOwner:
+    Type: String
+    Default: StefanSamne
+    Description: GitHub repository owner
+
+  GitHubRepo:
+    Type: String
+    Default: foomist
+    Description: GitHub repository name
+
+Resources:
+  # ============================================
+  # S3 BUCKET FOR STATIC SITE
+  # ============================================
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DomainName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: foomist
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${SiteBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # ============================================
+  # CLOUDFRONT DISTRIBUTION
+  # ============================================
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${DomainName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Aliases:
+          - !Ref DomainName
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !Ref CloudFrontOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        PriceClass: PriceClass_100
+      Tags:
+        - Key: Project
+          Value: foomist
+
+  # ============================================
+  # ADMIN PASSWORD SECRET
+  # ============================================
+  AdminPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: foomist/admin-password
+      Description: 'Admin password for Foom.ist analytics dashboard'
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: 'password'
+        PasswordLength: 20
+        ExcludeCharacters: '"@/\'
+
+  # ============================================
+  # ANALYTICS DYNAMODB TABLE
+  # ============================================
+  AnalyticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: foomist-analytics
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: visitorId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: createdDate
+          AttributeType: S
+        - AttributeName: sessionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: visitorId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: DateIndex
+          KeySchema:
+            - AttributeName: createdDate
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: foomist
+
+  # ============================================
+  # LAMBDA EXECUTION ROLE
+  # ============================================
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: foomist-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FoomistLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:foomist/*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt AnalyticsTable.Arn
+                  - !Sub '${AnalyticsTable.Arn}/index/*'
+
+  # ============================================
+  # MAIN LAMBDA FUNCTION
+  # ============================================
+  CreateIssueLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: foomist-api
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          GITHUB_OWNER: !Ref GitHubOwner
+          GITHUB_REPO: !Ref GitHubRepo
+          ANALYTICS_TABLE: !Ref AnalyticsTable
+          ADMIN_SECRET_NAME: foomist/admin-password
+          GITHUB_SECRET_NAME: foomist/github-token
+          DOMAIN: !Ref DomainName
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import hashlib
+          import hmac
+          import time
+          import uuid
+          import urllib.request
+          from datetime import datetime, timedelta
+          from decimal import Decimal
+
+          secrets = boto3.client('secretsmanager')
+          dynamodb = boto3.resource('dynamodb')
+
+          import os
+          TABLE_NAME = os.environ.get('ANALYTICS_TABLE', 'foomist-analytics')
+          ADMIN_SECRET = os.environ.get('ADMIN_SECRET_NAME', 'foomist/admin-password')
+          GITHUB_SECRET = os.environ.get('GITHUB_SECRET_NAME', 'foomist/github-token')
+          DOMAIN = os.environ.get('DOMAIN', 'foom.ist')
+
+          # Cache secrets
+          _admin_password = None
+          _github_token = None
+
+          def get_admin_password():
+              global _admin_password
+              if not _admin_password:
+                  resp = secrets.get_secret_value(SecretId=ADMIN_SECRET)
+                  _admin_password = json.loads(resp['SecretString'])['password']
+              return _admin_password
+
+          def get_github_token():
+              global _github_token
+              if not _github_token:
+                  resp = secrets.get_secret_value(SecretId=GITHUB_SECRET)
+                  _github_token = json.loads(resp['SecretString'])['GITHUB_TOKEN']
+              return _github_token
+
+          def create_admin_token(password):
+              if password != get_admin_password():
+                  return None
+              expiry = int(time.time()) + 3600  # 1 hour
+              message = f"{password}:{expiry}"
+              signature = hmac.new(password.encode(), message.encode(), hashlib.sha256).hexdigest()
+              return f"{expiry}:{signature}"
+
+          def verify_admin_token(token):
+              try:
+                  expiry, signature = token.split(':')
+                  if int(expiry) < int(time.time()):
+                      return False
+                  password = get_admin_password()
+                  message = f"{password}:{expiry}"
+                  expected = hmac.new(password.encode(), message.encode(), hashlib.sha256).hexdigest()
+                  return hmac.compare_digest(signature, expected)
+              except:
+                  return False
+
+          class DecimalEncoder(json.JSONEncoder):
+              def default(self, obj):
+                  if isinstance(obj, Decimal):
+                      return float(obj)
+                  return super().default(obj)
+
+          def handler(event, context):
+              path = event.get('rawPath', '/')
+              method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
+
+              headers = {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+              }
+
+              if method == 'OPTIONS':
+                  return {'statusCode': 200, 'headers': headers, 'body': ''}
+
+              try:
+                  # ============================================
+                  # ANALYTICS ENDPOINTS
+                  # ============================================
+                  if path == '/analytics/event' and method == 'POST':
+                      body = json.loads(event.get('body', '{}'))
+                      table = dynamodb.Table(TABLE_NAME)
+
+                      now = datetime.utcnow()
+                      item = {
+                          'visitorId': body.get('visitorId', str(uuid.uuid4())),
+                          'timestamp': now.isoformat(),
+                          'createdDate': now.strftime('%Y-%m-%d'),
+                          'sessionId': body.get('sessionId', ''),
+                          'eventType': body.get('eventType', 'page_view'),
+                          'eventName': body.get('eventName', ''),
+                          'page': body.get('page', '/'),
+                          'referrer': body.get('referrer', ''),
+                          'userAgent': body.get('userAgent', ''),
+                          'screenSize': body.get('screenSize', ''),
+                          'metadata': body.get('metadata', {}),
+                          'expiresAt': int((now + timedelta(days=90)).timestamp())
+                      }
+                      table.put_item(Item=item)
+                      return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True})}
+
+                  if path == '/analytics/batch' and method == 'POST':
+                      body = json.loads(event.get('body', '{}'))
+                      events = body.get('events', [])
+                      table = dynamodb.Table(TABLE_NAME)
+
+                      now = datetime.utcnow()
+                      with table.batch_writer() as batch:
+                          for evt in events[:25]:  # Max 25 per batch
+                              item = {
+                                  'visitorId': evt.get('visitorId', body.get('visitorId', str(uuid.uuid4()))),
+                                  'timestamp': evt.get('timestamp', now.isoformat()),
+                                  'createdDate': now.strftime('%Y-%m-%d'),
+                                  'sessionId': evt.get('sessionId', body.get('sessionId', '')),
+                                  'eventType': evt.get('eventType', 'page_view'),
+                                  'eventName': evt.get('eventName', ''),
+                                  'page': evt.get('page', '/'),
+                                  'metadata': evt.get('metadata', {}),
+                                  'expiresAt': int((now + timedelta(days=90)).timestamp())
+                              }
+                              batch.put_item(Item=item)
+                      return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True, 'count': len(events)})}
+
+                  # ============================================
+                  # ADMIN ENDPOINTS
+                  # ============================================
+                  if path == '/admin/login' and method == 'POST':
+                      body = json.loads(event.get('body', '{}'))
+                      token = create_admin_token(body.get('password', ''))
+                      if token:
+                          return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'token': token})}
+                      return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Invalid password'})}
+
+                  if path == '/admin/analytics' and method == 'GET':
+                      auth = event.get('headers', {}).get('authorization', '')
+                      token = auth.replace('Bearer ', '')
+                      if not verify_admin_token(token):
+                          return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Unauthorized'})}
+
+                      params = event.get('queryStringParameters', {}) or {}
+                      days = int(params.get('days', 30))
+
+                      table = dynamodb.Table(TABLE_NAME)
+                      now = datetime.utcnow()
+
+                      # Query last N days
+                      all_events = []
+                      for i in range(days):
+                          date = (now - timedelta(days=i)).strftime('%Y-%m-%d')
+                          resp = table.query(
+                              IndexName='DateIndex',
+                              KeyConditionExpression='createdDate = :d',
+                              ExpressionAttributeValues={':d': date}
+                          )
+                          all_events.extend(resp.get('Items', []))
+
+                      # Calculate metrics
+                      unique_visitors = len(set(e['visitorId'] for e in all_events))
+                      unique_sessions = len(set(e['sessionId'] for e in all_events if e.get('sessionId')))
+                      page_views = len([e for e in all_events if e.get('eventType') == 'page_view'])
+
+                      # Events by type
+                      event_types = {}
+                      for e in all_events:
+                          t = e.get('eventType', 'unknown')
+                          event_types[t] = event_types.get(t, 0) + 1
+
+                      # Events by day
+                      by_day = {}
+                      for e in all_events:
+                          d = e.get('createdDate', 'unknown')
+                          by_day[d] = by_day.get(d, 0) + 1
+
+                      # Top events
+                      event_names = {}
+                      for e in all_events:
+                          n = e.get('eventName', '')
+                          if n:
+                              event_names[n] = event_names.get(n, 0) + 1
+                      top_events = sorted(event_names.items(), key=lambda x: x[1], reverse=True)[:10]
+
+                      # Recent events
+                      recent = sorted(all_events, key=lambda x: x.get('timestamp', ''), reverse=True)[:50]
+
+                      return {
+                          'statusCode': 200,
+                          'headers': headers,
+                          'body': json.dumps({
+                              'uniqueVisitors': unique_visitors,
+                              'uniqueSessions': unique_sessions,
+                              'pageViews': page_views,
+                              'totalEvents': len(all_events),
+                              'eventTypes': event_types,
+                              'byDay': by_day,
+                              'topEvents': top_events,
+                              'recentEvents': recent
+                          }, cls=DecimalEncoder)
+                      }
+
+                  # ============================================
+                  # SUGGESTION ENDPOINT
+                  # ============================================
+                  if path == '/suggest' and method == 'POST':
+                      body = json.loads(event.get('body', '{}'))
+
+                      # Validation
+                      data_type = body.get('dataType', '')
+                      if data_type not in ['births', 'brain', 'chips']:
+                          return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Invalid dataType'})}
+
+                      source_url = body.get('sourceUrl', '')
+                      if not source_url.startswith('https://'):
+                          return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'URL must use HTTPS'})}
+
+                      # Create GitHub issue
+                      github_token = get_github_token()
+                      owner = os.environ.get('GITHUB_OWNER', 'StefanSamne')
+                      repo = os.environ.get('GITHUB_REPO', 'foomist')
+
+                      issue_body = f"""## Data Suggestion
+
+          ```json
+          {json.dumps(body, indent=2)}
+          ```
+
+          ---
+          *Submitted via foom.ist suggestion form*
+          """
+
+                      issue_data = json.dumps({
+                          'title': f"[Data Suggestion] {data_type}: {body.get('sourceName', 'Unknown')}",
+                          'body': issue_body,
+                          'labels': ['data-suggestion']
+                      }).encode('utf-8')
+
+                      req = urllib.request.Request(
+                          f'https://api.github.com/repos/{owner}/{repo}/issues',
+                          data=issue_data,
+                          headers={
+                              'Authorization': f'Bearer {github_token}',
+                              'Accept': 'application/vnd.github+json',
+                              'Content-Type': 'application/json',
+                              'User-Agent': 'Foomist-Lambda'
+                          },
+                          method='POST'
+                      )
+
+                      with urllib.request.urlopen(req) as resp:
+                          result = json.loads(resp.read().decode('utf-8'))
+                          return {
+                              'statusCode': 200,
+                              'headers': headers,
+                              'body': json.dumps({
+                                  'success': True,
+                                  'issueNumber': result['number'],
+                                  'issueUrl': result['html_url']
+                              })
+                          }
+
+                  return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
+
+              except Exception as e:
+                  print(f"Error: {e}")
+                  return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
+      Tags:
+        - Key: Project
+          Value: foomist
+
+  # ============================================
+  # API GATEWAY
+  # ============================================
+  ApiGateway:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: foomist-api
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Sub 'https://${DomainName}'
+          - 'http://localhost:8000'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        MaxAge: 86400
+      Tags:
+        Project: foomist
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ApiGateway
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CreateIssueLambda.Arn
+      PayloadFormatVersion: '2.0'
+
+  ApiRouteAnalyticsEvent:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'POST /analytics/event'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiRouteAnalyticsBatch:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'POST /analytics/batch'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiRouteAdminLogin:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'POST /admin/login'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiRouteAdminAnalytics:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'GET /admin/analytics'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'POST /suggest'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGateway
+      StageName: '$default'
+      AutoDeploy: true
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateIssueLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+
+  # ============================================
+  # ROUTE 53 RECORDS
+  # ============================================
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront's fixed hosted zone ID
+        EvaluateTargetHealth: false
+
+Outputs:
+  SiteBucketName:
+    Value: !Ref SiteBucket
+    Description: S3 bucket name for static site
+
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: CloudFront distribution domain
+
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
+    Description: CloudFront distribution ID (for cache invalidation)
+
+  ApiEndpoint:
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+    Description: API Gateway base endpoint
+
+  SiteUrl:
+    Value: !Sub 'https://${DomainName}'
+    Description: Live site URL
+
+  AdminPasswordSecretArn:
+    Value: !Ref AdminPasswordSecret
+    Description: ARN of admin password secret (retrieve with aws secretsmanager get-secret-value)

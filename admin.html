@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foom.ist Admin Dashboard</title>
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a2e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-human: #ff6b6b;
+            --accent-chip: #4ecdc4;
+            --accent-crossover: #ffd93d;
+            --border-color: #2a2a3e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .login-box, .dashboard {
+            display: none;
+        }
+
+        .login-box.active, .dashboard.active {
+            display: block;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .login-container h1 {
+            margin-bottom: 30px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--accent-human), var(--accent-chip));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-chip);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-chip);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-danger {
+            background: var(--accent-human);
+        }
+
+        .error {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid var(--accent-human);
+            color: var(--accent-human);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--accent-human), var(--accent-chip));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-chip);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .controls-row label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .controls-row select,
+        .controls-row input[type="date"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .controls-row select:focus,
+        .controls-row input[type="date"]:focus {
+            outline: none;
+            border-color: var(--accent-chip);
+        }
+
+        .last-refresh {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-left: auto;
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            text-align: left;
+            color: var(--accent-chip);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .event-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .event-type.page_view { background: rgba(78, 205, 196, 0.2); color: var(--accent-chip); }
+        .event-type.interaction { background: rgba(255, 217, 61, 0.2); color: var(--accent-crossover); }
+        .event-type.form { background: rgba(255, 107, 107, 0.2); color: var(--accent-human); }
+
+        .top-events-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .top-event-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+
+        .top-event-name {
+            color: var(--text-primary);
+        }
+
+        .top-event-count {
+            color: var(--accent-chip);
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .last-refresh {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Box -->
+    <div class="login-box active">
+        <div class="login-container">
+            <h1>Foom.ist Admin</h1>
+            <div id="loginError" class="error" style="display: none;"></div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="password">Admin Password</label>
+                    <input type="password" id="password" required autofocus>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard">
+        <div class="container">
+            <div class="header">
+                <h1>Foom.ist Analytics</h1>
+                <div class="header-actions">
+                    <a href="/" class="btn btn-small" style="text-decoration: none;">View Site</a>
+                    <button onclick="logout()" class="btn btn-small btn-danger">Logout</button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-row">
+                <div>
+                    <label>Days:</label>
+                    <select id="daysFilter" onchange="loadAnalytics()">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Auto-refresh:</label>
+                    <select id="autoRefresh" onchange="setAutoRefresh()">
+                        <option value="0">Off</option>
+                        <option value="30">30s</option>
+                        <option value="60">1m</option>
+                        <option value="300">5m</option>
+                    </select>
+                </div>
+                <button onclick="loadAnalytics()" class="btn btn-small">
+                    <span id="refreshIcon">&#x21bb;</span> Refresh
+                </button>
+                <span class="last-refresh" id="lastRefresh"></span>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Unique Visitors</div>
+                    <div class="stat-value" id="statVisitors">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Sessions</div>
+                    <div class="stat-value" id="statSessions">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Page Views</div>
+                    <div class="stat-value" id="statPageViews">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Events</div>
+                    <div class="stat-value" id="statEvents">-</div>
+                </div>
+            </div>
+
+            <!-- Two column layout -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                <!-- Top Events -->
+                <div class="section">
+                    <h2>Top Events</h2>
+                    <div id="topEvents" class="top-events-list">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Events by Day -->
+                <div class="section">
+                    <h2>Events by Day</h2>
+                    <div id="eventsByDay" class="table-container">
+                        <div class="empty-state">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Events Table -->
+            <div class="section">
+                <h2>Recent Events</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Visitor</th>
+                                <th>Type</th>
+                                <th>Event</th>
+                                <th>Page</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTable">
+                            <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API endpoint - will be replaced after deployment
+        const API_BASE = 'https://tnu93m4j91.execute-api.ca-central-1.amazonaws.com';
+        let authToken = null;
+        let autoRefreshInterval = null;
+
+        // ============================================
+        // AUTH
+        // ============================================
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorEl = document.getElementById('loginError');
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            errorEl.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    authToken = data.token;
+                    localStorage.setItem('foomist_admin_token', authToken);
+                    showDashboard();
+                } else {
+                    errorEl.textContent = data.error || 'Invalid password';
+                    errorEl.style.display = 'block';
+                }
+            } catch (error) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        }
+
+        function showDashboard() {
+            document.querySelector('.login-box').classList.remove('active');
+            document.querySelector('.dashboard').classList.add('active');
+            loadAnalytics();
+        }
+
+        function logout() {
+            authToken = null;
+            localStorage.removeItem('foomist_admin_token');
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            document.querySelector('.dashboard').classList.remove('active');
+            document.querySelector('.login-box').classList.add('active');
+            document.getElementById('password').value = '';
+        }
+
+        // ============================================
+        // ANALYTICS
+        // ============================================
+
+        async function loadAnalytics() {
+            const days = document.getElementById('daysFilter').value;
+            const refreshIcon = document.getElementById('refreshIcon');
+
+            // Show loading state
+            refreshIcon.style.animation = 'spin 1s linear infinite';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/analytics?days=${days}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('Failed to load analytics');
+                }
+
+                const data = await response.json();
+                renderStats(data);
+                renderTopEvents(data.topEvents);
+                renderEventsByDay(data.byDay);
+                renderEventsTable(data.recentEvents);
+
+                document.getElementById('lastRefresh').textContent =
+                    'Updated: ' + new Date().toLocaleTimeString();
+
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            } finally {
+                refreshIcon.style.animation = '';
+            }
+        }
+
+        function renderStats(data) {
+            document.getElementById('statVisitors').textContent = data.uniqueVisitors || 0;
+            document.getElementById('statSessions').textContent = data.uniqueSessions || 0;
+            document.getElementById('statPageViews').textContent = data.pageViews || 0;
+            document.getElementById('statEvents').textContent = data.totalEvents || 0;
+        }
+
+        function renderTopEvents(topEvents) {
+            const container = document.getElementById('topEvents');
+
+            if (!topEvents || topEvents.length === 0) {
+                container.innerHTML = '<div class="empty-state">No events yet</div>';
+                return;
+            }
+
+            container.innerHTML = topEvents.map(([name, count]) => `
+                <div class="top-event-item">
+                    <span class="top-event-name">${escapeHtml(name)}</span>
+                    <span class="top-event-count">${count}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderEventsByDay(byDay) {
+            const container = document.getElementById('eventsByDay');
+
+            if (!byDay || Object.keys(byDay).length === 0) {
+                container.innerHTML = '<div class="empty-state">No data yet</div>';
+                return;
+            }
+
+            const sortedDays = Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
+
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Events</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedDays.map(([date, count]) => `
+                            <tr>
+                                <td>${date}</td>
+                                <td>${count}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderEventsTable(events) {
+            const tbody = document.getElementById('eventsTable');
+
+            if (!events || events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No events yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = events.map(evt => {
+                const time = evt.timestamp ? new Date(evt.timestamp).toLocaleString() : '-';
+                const visitorId = evt.visitorId || '-';
+                const shortVisitor = visitorId.length > 12 ? visitorId.substring(0, 12) + '...' : visitorId;
+                const eventType = evt.eventType || 'unknown';
+                const eventName = evt.eventName || '-';
+                const page = evt.page || '/';
+
+                // Build details from metadata
+                let details = '';
+                if (evt.metadata) {
+                    const meta = evt.metadata;
+                    if (meta.action) details += meta.action + ' ';
+                    if (meta.value) details += `(${meta.value})`;
+                }
+
+                return `
+                    <tr>
+                        <td style="white-space: nowrap;">${time}</td>
+                        <td title="${escapeHtml(visitorId)}">${escapeHtml(shortVisitor)}</td>
+                        <td><span class="event-type ${eventType}">${eventType}</span></td>
+                        <td>${escapeHtml(eventName)}</td>
+                        <td>${escapeHtml(page)}</td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(details) || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ============================================
+        // AUTO-REFRESH
+        // ============================================
+
+        function setAutoRefresh() {
+            const seconds = parseInt(document.getElementById('autoRefresh').value);
+
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+
+            if (seconds > 0) {
+                autoRefreshInterval = setInterval(loadAnalytics, seconds * 1000);
+            }
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedToken = localStorage.getItem('foomist_admin_token');
+            if (savedToken) {
+                authToken = savedToken;
+                showDashboard();
+            }
+        });
+    </script>
+</body>
+</html>
