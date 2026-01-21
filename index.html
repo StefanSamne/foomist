@@ -60,6 +60,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         :root {
             --bg-primary: #0a0a0f;
@@ -607,6 +608,253 @@
             50% { opacity: 0.5; }
         }
 
+        /* Definitions Panel */
+        .definitions-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .definitions-panel summary {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .definitions-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .definitions-panel[open] summary {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .definitions-content {
+            padding: 1rem 1.5rem;
+        }
+
+        .def-item {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .def-item:last-child {
+            border-bottom: none;
+        }
+
+        .def-term {
+            font-weight: bold;
+            color: var(--accent-crossover);
+            font-size: 0.9rem;
+        }
+
+        .def-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .def-desc em {
+            color: var(--text-primary);
+            font-style: italic;
+        }
+
+        /* Contribute + Info Panels */
+        .contribute-box {
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.08), rgba(78, 205, 196, 0.06));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0 1.5rem 0;
+        }
+
+        .contribute-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .contribute-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .contribute-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .contribute-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.45rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .contribute-link:hover {
+            border-color: var(--accent-chip);
+            color: var(--accent-chip);
+        }
+
+        .contribute-link.primary {
+            background: var(--accent-chip);
+            border-color: var(--accent-chip);
+            color: var(--bg-primary);
+            font-weight: 700;
+        }
+
+        .contribute-link.primary:hover {
+            opacity: 0.9;
+            color: var(--bg-primary);
+        }
+
+        .download-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 0.75rem 0 0.25rem 0;
+            flex-wrap: wrap;
+        }
+
+        .download-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.85;
+        }
+
+        .privacy-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-top: 0.75rem;
+        }
+
+        .privacy-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-chip);
+        }
+
+        .privacy-hint {
+            margin-top: 0.35rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+
+        /* Session Stats */
+        .session-stats {
+            background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1));
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .session-stats span {
+            font-weight: bold;
+            font-family: 'SF Mono', monospace;
+        }
+
+        #session-brains {
+            color: var(--accent-human);
+        }
+
+        #session-flops {
+            color: var(--accent-chip);
+        }
+
+        /* Calculus Controls */
+        .calculus-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .calc-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            min-width: 60px;
+        }
+
+        .calc-btn:hover {
+            border-color: var(--accent-chip);
+            color: var(--accent-chip);
+        }
+
+        .calc-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .calc-level {
+            font-size: 0.85rem;
+            color: var(--accent-crossover);
+            font-weight: bold;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .chart-hint {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .def-item {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+            }
+
+            .calculus-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+
         .indicator {
             display: inline-block;
             width: 8px;
@@ -667,6 +915,100 @@
             </div>
         </header>
 
+        <!-- Contribute -->
+        <div class="contribute-box" id="contribute">
+            <div class="contribute-title">Want to improve the data?</div>
+            <div class="contribute-text">
+                If you have a more accurate or more recent source for birth rates, brain FLOPS estimates, or chip production,
+                you can submit it below. Suggestions open a GitHub issue automatically so other people can review and discuss.
+            </div>
+            <div class="contribute-actions">
+                <a class="contribute-link primary" href="#suggest-section">Suggest better data</a>
+                <a class="contribute-link" href="https://github.com/StefanSamne/foomist/issues?q=label%3Adata-suggestion" target="_blank" rel="noopener">Browse suggestions</a>
+                <a class="contribute-link" href="https://github.com/StefanSamne/foomist/issues" target="_blank" rel="noopener">Open an issue</a>
+                <a class="contribute-link" href="https://github.com/StefanSamne/foomist" target="_blank" rel="noopener">View source</a>
+            </div>
+        </div>
+
+        <!-- Definitions Panel -->
+        <details class="definitions-panel">
+            <summary>What is this? ▼</summary>
+            <div class="definitions-content">
+                <div class="def-item">
+                    <span class="def-term">FOOM</span>
+                    <span class="def-desc">The hypothetical moment of explosive, recursive AI self-improvement. Coined by Eliezer Yudkowsky. <em>When the curve goes vertical.</em></span>
+                </div>
+                <div class="def-item">
+                    <span class="def-term">FLOPS</span>
+                    <span class="def-desc">Floating Point Operations Per Second. For chips: measured compute. For brains: estimated at 10<sup>14</sup>–10<sup>18</sup> ops/s depending on model.</span>
+                </div>
+                <div class="def-item">
+                    <span class="def-term">The Flippening</span>
+                    <span class="def-desc">The crossover point where humanity's silicon creations exceed the raw computational substrate that created them.</span>
+                </div>
+            </div>
+        </details>
+
+        <!-- How it works -->
+        <details class="definitions-panel">
+            <summary>How the model works ▼</summary>
+            <div class="definitions-content">
+                <div class="def-item">
+                    <span class="def-term">Human curve</span>
+                    <span class="def-desc">
+                        For each year since 1970, estimate global births and multiply by a brain compute assumption
+                        (10^14, 10^16, or 10^18 ops per second). Then sum across years to get a cumulative total.
+                    </span>
+                </div>
+                <div class="def-item">
+                    <span class="def-term">Chip curve</span>
+                    <span class="def-desc">
+                        For each year since 1970, estimate total FLOPS shipped that year (historical anchors with interpolation, then a growth rate),
+                        then sum across years to get a cumulative total.
+                    </span>
+                </div>
+                <div class="def-item">
+                    <span class="def-term">Controls</span>
+                    <span class="def-desc">
+                        The buttons and slider change the assumptions and recompute the series immediately. The calculus toggle switches between cumulative,
+                        rate (d/dt), and acceleration (d²/dt²) views.
+                    </span>
+                </div>
+            </div>
+        </details>
+
+        <!-- Privacy -->
+        <details class="definitions-panel">
+            <summary>Privacy ▼</summary>
+            <div class="definitions-content">
+                <div class="def-item">
+                    <span class="def-term">What is collected</span>
+                    <span class="def-desc">
+                        This site logs basic, anonymous usage events (page load, button clicks, scroll depth) so I can learn what people find interesting.
+                        The server also uses your IP address to estimate country and city for aggregate stats.
+                    </span>
+                </div>
+                <div class="def-item">
+                    <span class="def-term">Why</span>
+                    <span class="def-desc">
+                        Pure curiosity. No ads, no selling, and no cross-site tracking. Data expires after about 90 days.
+                    </span>
+                </div>
+                <label class="privacy-toggle">
+                    <input type="checkbox" id="analytics-optout">
+                    Disable analytics on this device
+                </label>
+                <div class="privacy-hint">
+                    If enabled, events will not be sent from this browser. You can also add <code>?noanalytics=1</code> to the URL.
+                </div>
+            </div>
+        </details>
+
+        <!-- Session Stats -->
+        <div class="session-stats" id="session-stats">
+            Since you opened this page: <span id="session-brains">0</span> brains born, <span id="session-flops">0</span> FLOPS capacity added
+        </div>
+
         <div class="counters">
             <div class="counter-card human">
                 <div class="counter-label">
@@ -693,6 +1035,18 @@
         </div>
 
         <div class="chart-container">
+            <div class="calculus-controls">
+                <button class="calc-btn" id="calc-up" title="Integrate (cumulative)">↑ ∫</button>
+                <span class="calc-level" id="calc-level">∫ Cumulative</span>
+                <button class="calc-btn" id="calc-down" title="Differentiate (rate of change)">↓ d/dt</button>
+                <button class="calc-btn" id="reset-zoom" title="Reset zoom">Reset Zoom</button>
+            </div>
+            <div class="chart-hint">Scroll to zoom • Drag to pan • Click legend to toggle series</div>
+            <div class="download-controls">
+                <span class="download-label">Download chart data:</span>
+                <button class="calc-btn" id="download-csv" title="Download as CSV">CSV</button>
+                <button class="calc-btn" id="download-json" title="Download as JSON">JSON</button>
+            </div>
             <div class="chart-wrapper">
                 <canvas id="mips-chart"></canvas>
             </div>
@@ -791,11 +1145,26 @@
             </div>
 
             <div class="source-section">
+                <div class="source-title">Future Predictions (🔮 in tooltips)</div>
+                <div class="source-list">
+                    <a href="https://ai-2027.com/" target="_blank">AI-2027.com</a> — Detailed scenario forecasting AGI/ASI timeline through 2027<br>
+                    <a href="https://situational-awareness.ai/" target="_blank">Situational Awareness</a> — Leopold Aschenbrenner's analysis: "AGI by 2027 is strikingly plausible"
+                </div>
+                <div class="assumption-box">
+                    <strong>AI-2027:</strong> Superhuman coder by March 2027, superhuman AI researcher by Sept 2027, potential superintelligence by Dec 2027.<br>
+                    <strong>Situational Awareness:</strong> Intelligence explosion could compress "a decade of progress into ≤1 year." $100B+ compute clusters by end of decade.<br>
+                    <em>Note: These are speculative forecasts, not established fact. Included for context on current AI timeline discourse.</em>
+                </div>
+            </div>
+
+            <div class="source-section">
                 <div class="source-title">Inspiration</div>
                 <div class="source-list">
-                    Charles Stross, <em>Accelerando</em> (2005): "Sometime in this century laboring women will produce
-                    forty-five thousand babies a day, representing 10^23 MIPS of processing power. Also around the world,
-                    fab lines will churn out thirty million microprocessors a day, representing 10^23 MIPS of processing power."
+                    <blockquote style="font-style: italic; border-left: 3px solid var(--accent-crossover); padding-left: 1rem; margin: 0.5rem 0;">
+                        "Welcome to the early twenty-first century, human.<br><br>
+                        It's night in Milton Keynes, sunrise in Hong Kong. Moore's Law rolls inexorably on, dragging humanity toward the uncertain future. The planets of the solar system have a combined mass of approximately 2 × 10<sup>27</sup> kilograms. Around the world, laboring women produce forty-five thousand babies a day, representing 10<sup>23</sup> MIPS of processing power. Also around the world, fab lines casually churn out thirty million microprocessors a day, representing 10<sup>23</sup> MIPS. In another ten months, most of the MIPS being added to the solar system will be machine-hosted for the first time. About ten years after that, the solar system's installed processing power will nudge the critical 1 MIPS per gram threshold – one million instructions per second per gram of matter. After that, singularity – a vanishing point beyond which extrapolating progress becomes meaningless. The time remaining before the intelligence spike is down to single-digit years ..."
+                    </blockquote>
+                    <div style="margin-top: 0.5rem;">— Charles Stross, <em>Accelerando</em> (2005)</div>
                 </div>
             </div>
         </div>
@@ -868,6 +1237,16 @@
     </div>
 
     <script>
+        // Register Chart.js annotation plugin
+        const annotationPlugin = window['chartjs-plugin-annotation'];
+        console.log('Annotation plugin loaded:', annotationPlugin);
+        if (annotationPlugin) {
+            Chart.register(annotationPlugin);
+            console.log('Annotation plugin registered');
+        } else {
+            console.error('Annotation plugin NOT found!');
+        }
+
         // ============================================
         // CONFIGURATION & CONSTANTS
         // ============================================
@@ -923,7 +1302,51 @@
 
             startYear: 1970,
             endYear: 2070,
-            baseYear: 2025
+            baseYear: 2025,
+
+            // Historical annotations for tooltips
+            annotations: [
+                // Birth/Human milestones
+                { year: 1970, type: 'human', note: 'World population: 3.7B. Post-war baby boom winding down.' },
+                { year: 1987, type: 'human', note: 'World population hits 5 billion (July 11). Peak annual birth rate approaching.' },
+                { year: 1990, type: 'human', note: 'Birth rates peak at 143M/year. Soviet collapse begins demographic crisis in Eastern Europe.' },
+                { year: 1999, type: 'human', note: 'World population reaches 6 billion. Birth rates declining as development spreads.' },
+                { year: 2011, type: 'human', note: 'World population hits 7 billion (Oct 31).' },
+                { year: 2012, type: 'human', note: 'Global births peak at 146M — the most humans ever born in a single year.' },
+                { year: 2020, type: 'human', note: 'COVID-19 pandemic. Many countries see birth rate drops 9 months later.' },
+                { year: 2023, type: 'human', note: 'World population reaches 8 billion. Birth rates continuing secular decline.' },
+                { year: 2030, type: 'human', note: 'Projected: India surpasses China as most populous nation.' },
+                { year: 2050, type: 'human', note: 'UN projects population plateau beginning. Some models predict peak and decline.' },
+
+                // Chip/Computing milestones
+                { year: 1971, type: 'chip', note: 'Intel 4004: First commercial microprocessor. 2,300 transistors, 740 kHz.' },
+                { year: 1975, type: 'chip', note: 'Altair 8800 launches hobbyist computing. MITS sells 2,000 units.' },
+                { year: 1981, type: 'chip', note: 'IBM PC launched. Intel 8088 @ 4.77 MHz. Personal computing era begins.' },
+                { year: 1985, type: 'chip', note: 'Intel 386: First 32-bit x86 processor. 275,000 transistors.' },
+                { year: 1993, type: 'chip', note: 'Intel Pentium: 3.1M transistors. "Intel Inside" marketing begins.' },
+                { year: 1997, type: 'chip', note: 'IBM Deep Blue defeats Kasparov. First AI victory over world chess champion.' },
+                { year: 1999, type: 'chip', note: 'NVIDIA GeForce 256: First GPU. "A new era of computing" begins.' },
+                { year: 2007, type: 'chip', note: 'iPhone launches. NVIDIA CUDA released. Mobile + GPU computing revolution.' },
+                { year: 2012, type: 'chip', note: 'AlexNet wins ImageNet using GPUs. Deep learning revolution begins.' },
+                { year: 2016, type: 'chip', note: 'Google TPU announced. AlphaGo defeats Lee Sedol. AI-specific silicon emerges.' },
+                { year: 2017, type: 'chip', note: '"Attention Is All You Need" published. Transformer architecture invented.' },
+                { year: 2020, type: 'chip', note: 'NVIDIA A100: 54B transistors, 312 TFLOPS. GPT-3 released.' },
+                { year: 2022, type: 'chip', note: 'ChatGPT launches (Nov 30). AI demand explosion begins.' },
+                { year: 2023, type: 'chip', note: 'NVIDIA H100 ships at scale. Data center GPU shortage. $1T+ AI investment wave.' },
+                { year: 2024, type: 'chip', note: 'NVIDIA Blackwell (B100): 208B transistors. AI chip production at unprecedented scale.' },
+                { year: 2025, type: 'chip', note: 'Epoch AI estimates 6-7M AI GPUs deployed globally. ~4M H100-equivalents installed.' },
+
+                // Crossover/Meta observations
+                { year: 2040, type: 'meta', note: 'Projected crossover zone (moderate brain estimate). The Flippening approaches.' },
+                { year: 2045, type: 'meta', note: 'Kurzweil\'s predicted Singularity year (from "The Singularity Is Near", 2005).' },
+
+                // Future predictions (AI-2027.com & Situational Awareness)
+                { year: 2026, type: 'prediction', note: 'AI-2027: R&D automation begins. 50% faster algorithmic progress via AI assistants. 10²⁸ FLOP training runs.' },
+                { year: 2027, type: 'prediction', note: 'AI-2027: Superhuman coder (March), superhuman AI researcher (Sept), potential superintelligence (Dec). Situational Awareness: "AGI by 2027 is strikingly plausible."' },
+                { year: 2028, type: 'prediction', note: 'Situational Awareness: Intelligence explosion — "hundreds of millions of AGIs could compress a decade of progress into ≤1 year."' },
+                { year: 2029, type: 'prediction', note: 'Situational Awareness: Superintelligent systems "smarter than you or I" by end of decade. $100B+ compute clusters.' },
+                { year: 2030, type: 'prediction', note: 'Situational Awareness: American electricity production grows "tens of percent" to support hundreds of millions of GPUs.' }
+            ]
         };
 
         // ============================================
@@ -934,7 +1357,16 @@
             brainEstimate: 'moderate',
             birthScenario: 'stable',
             mooresLawRate: 0.35,  // 35% annual growth
-            chart: null
+            chart: null,
+            // Calculus mode: 0 = cumulative (∫), -1 = rate (d/dt), -2 = acceleration (d²/dt²)
+            calculusLevel: 0
+        };
+
+        // Session tracking - how much has changed since page load
+        const sessionStart = {
+            timestamp: Date.now(),
+            humanOps: 0,  // Will be set on init
+            chipOps: 0    // Will be set on init
         };
 
         // ============================================
@@ -1003,11 +1435,39 @@
         }
 
         function findCrossoverYear() {
-            for (let year = CONFIG.startYear; year <= CONFIG.endYear; year += 0.1) {
-                const humanMIPS = getCumulativeOps(year, 'human');
-                const chipMIPS = getCumulativeOps(year, 'chip');
+            // More efficient: compute incrementally and find crossover with interpolation
+            let humanCumulative = 0;
+            let chipCumulative = 0;
+            let prevHuman = 0;
+            let prevChip = 0;
+            const brainOps = CONFIG.brainEstimates[state.brainEstimate];
 
-                if (chipMIPS >= humanMIPS) {
+            for (let year = CONFIG.startYear; year <= CONFIG.endYear; year++) {
+                prevHuman = humanCumulative;
+                prevChip = chipCumulative;
+
+                const birthsMillions = getBirthsForYear(year);
+                humanCumulative += birthsMillions * 1e6 * brainOps;
+                chipCumulative += getChipFLOPSForYear(year);
+
+                // Check if crossover happened this year
+                if (chipCumulative >= humanCumulative && prevChip < prevHuman) {
+                    // Linear interpolation to estimate sub-year crossover
+                    // Find t where: prevChip + t*(chipCumulative-prevChip) = prevHuman + t*(humanCumulative-prevHuman)
+                    const chipDelta = chipCumulative - prevChip;
+                    const humanDelta = humanCumulative - prevHuman;
+                    const gap = prevHuman - prevChip;
+                    const closingRate = chipDelta - humanDelta;
+
+                    if (closingRate > 0) {
+                        const t = gap / closingRate;
+                        return year - 1 + Math.max(0, Math.min(1, t));
+                    }
+                    return year;
+                }
+
+                // Also check if chip already exceeded at start of range
+                if (year === CONFIG.startYear && chipCumulative >= humanCumulative) {
                     return year;
                 }
             }
@@ -1035,9 +1495,18 @@
 
         function formatScientific(value) {
             if (value === 0) return '0';
-            const exponent = Math.floor(Math.log10(value));
-            const mantissa = value / Math.pow(10, exponent);
-            return mantissa.toFixed(2) + ' × 10^' + exponent;
+            const sign = value < 0 ? '-' : '';
+            const absValue = Math.abs(value);
+            const exponent = Math.floor(Math.log10(absValue));
+            const mantissa = absValue / Math.pow(10, exponent);
+            return sign + mantissa.toFixed(2) + ' × 10^' + exponent;
+        }
+
+        // Get historical annotations for a given year (with proximity tolerance)
+        function getAnnotationsForYear(year, tolerance = 1) {
+            return CONFIG.annotations.filter(a =>
+                Math.abs(a.year - year) <= tolerance
+            );
         }
 
         // ============================================
@@ -1046,24 +1515,216 @@
 
         function generateChartData() {
             const years = [];
-            const humanData = [];
-            const chipData = [];
+            let humanData = [];
+            let chipData = [];
 
-            for (let year = CONFIG.startYear; year <= CONFIG.endYear; year += 1) {
+            // Extend calculation beyond display range to avoid boundary artifacts
+            // when differentiating (edge effects from finite differences)
+            const bufferYears = Math.abs(state.calculusLevel) * 2;  // 2 extra years per derivative
+            const calcEndYear = CONFIG.endYear + bufferYears;
+
+            // First get cumulative data (with buffer)
+            for (let year = CONFIG.startYear; year <= calcEndYear; year += 1) {
                 years.push(year);
                 humanData.push(getCumulativeOps(year, 'human'));
                 chipData.push(getCumulativeOps(year, 'chip'));
             }
 
-            return { years, humanData, chipData };
+            // Apply calculus transformations based on level
+            // Level 0: cumulative (default)
+            // Level -1: first derivative (rate of change)
+            // Level -2: second derivative (acceleration)
+            if (state.calculusLevel < 0) {
+                for (let d = 0; d > state.calculusLevel; d--) {
+                    humanData = differentiate(humanData);
+                    chipData = differentiate(chipData);
+                }
+            }
+
+            // Trim to display range (remove buffer years)
+            const displayLength = CONFIG.endYear - CONFIG.startYear + 1;
+            return {
+                years: years.slice(0, displayLength),
+                humanData: humanData.slice(0, displayLength),
+                chipData: chipData.slice(0, displayLength)
+            };
         }
+
+        // Numerical differentiation (central differences for interior points)
+        function differentiate(data) {
+            if (data.length < 2) return [0];
+
+            const result = [];
+
+            // First point: forward difference
+            result.push(data[1] - data[0]);
+
+            // Interior points: central difference (more accurate, properly centered)
+            for (let i = 1; i < data.length - 1; i++) {
+                // Central difference: (f(x+1) - f(x-1)) / 2
+                const derivative = (data[i + 1] - data[i - 1]) / 2;
+                result.push(derivative);
+            }
+
+            // Last point: backward difference
+            result.push(data[data.length - 1] - data[data.length - 2]);
+
+            return result;
+        }
+
+        // Get label for current calculus level
+        function getCalculusLabel() {
+            switch (state.calculusLevel) {
+                case 0: return '∫ Cumulative';
+                case -1: return 'd/dt Rate';
+                case -2: return 'd²/dt² Acceleration';
+                default: return 'Level ' + state.calculusLevel;
+            }
+        }
+
+        // Get Y-axis label for current calculus level
+        function getYAxisLabel() {
+            switch (state.calculusLevel) {
+                case 0: return 'Cumulative ops (log scale)';
+                case -1: return 'ops/year (log scale)';
+                case -2: return 'ops/year² (linear) — negative = declining rates';
+                default: return 'ops (log scale)';
+            }
+        }
+
+        // Get dataset labels for current calculus level
+        function getHumanDataLabel() {
+            switch (state.calculusLevel) {
+                case 0: return 'Cumulative Human Brain ops/s';
+                case -1: return 'Human Brain ops/year (rate)';
+                case -2: return 'Human Brain acceleration';
+                default: return 'Human Brain ops';
+            }
+        }
+
+        function getChipDataLabel() {
+            switch (state.calculusLevel) {
+                case 0: return 'Cumulative Chip FLOPS';
+                case -1: return 'Chip FLOPS/year (rate)';
+                case -2: return 'Chip FLOPS acceleration';
+                default: return 'Chip FLOPS';
+            }
+        }
+
+        // Get Y-axis configuration based on calculus level
+        // Acceleration view uses linear scale to show negative values (deceleration)
+        function getYAxisConfig() {
+            const baseConfig = {
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.05)'
+                },
+                ticks: {
+                    color: '#a0a0a0'
+                },
+                title: {
+                    display: true,
+                    text: getYAxisLabel(),
+                    color: '#a0a0a0'
+                }
+            };
+
+            if (state.calculusLevel === -2) {
+                // Acceleration view: use linear scale to properly show negative values
+                return {
+                    ...baseConfig,
+                    type: 'linear',
+                    ticks: {
+                        ...baseConfig.ticks,
+                        callback: function(value) {
+                            return formatScientific(value);
+                        },
+                        maxTicksLimit: 8
+                    }
+                };
+            } else {
+                // Cumulative and rate views: use log scale
+                return {
+                    ...baseConfig,
+                    type: 'logarithmic',
+                    ticks: {
+                        ...baseConfig.ticks,
+                        callback: function(value) {
+                            const exp = Math.log10(value);
+                            if (Number.isInteger(exp) && exp % 5 === 0) {
+                                return '10^' + exp;
+                            }
+                            return '';
+                        }
+                    }
+                };
+            }
+        }
+
+        // Custom tooltip positioner that avoids covering the data point
+        Chart.Tooltip.positioners.avoidPoint = function(elements, eventPosition) {
+            if (!elements.length) {
+                return false;
+            }
+
+            const chart = this.chart;
+            const chartArea = chart.chartArea;
+            const tooltipEl = chart.tooltip;
+
+            // Find the bounding box of ALL data points being shown
+            let minY = Infinity, maxY = -Infinity;
+            let pointX = 0;
+            for (const el of elements) {
+                const pt = el.element;
+                pointX = pt.x;
+                minY = Math.min(minY, pt.y);
+                maxY = Math.max(maxY, pt.y);
+            }
+
+            // Get actual tooltip size
+            const tooltipWidth = tooltipEl.width || 350;
+            const tooltipHeight = tooltipEl.height || 200;
+
+            const margin = 20;
+
+            // Calculate available space
+            const spaceBelow = chartArea.bottom - maxY;
+            const spaceAbove = minY - chartArea.top;
+
+            let x, y;
+
+            // Horizontal: position at the data point X (caret will point here)
+            // Chart.js will center the tooltip on this X position
+            x = pointX;
+            // Clamp to keep tooltip within chart area (accounting for half-width on each side)
+            x = Math.max(chartArea.left + tooltipWidth / 2 + 5, Math.min(x, chartArea.right - tooltipWidth / 2 - 5));
+
+            // Vertical: position below lowest point if possible, else above highest
+            if (spaceBelow >= tooltipHeight + margin) {
+                y = maxY + margin;
+            } else if (spaceAbove >= tooltipHeight + margin) {
+                y = minY - tooltipHeight - margin;
+            } else {
+                // Tight space - push to bottom of chart area
+                y = chartArea.bottom - tooltipHeight - 10;
+            }
+
+            // Clamp y to chart area
+            y = Math.max(chartArea.top + 5, Math.min(y, chartArea.bottom - tooltipHeight - 5));
+
+            return { x, y };
+        };
 
         function createChart() {
             const ctx = document.getElementById('mips-chart').getContext('2d');
             const data = generateChartData();
             const crossoverYear = findCrossoverYear();
+            const currentYear = new Date().getFullYear();
+            // For category scales, annotations need the index, not the value
+            const currentYearIndex = currentYear - CONFIG.startYear;
+            const crossoverYearIndex = crossoverYear ? Math.round(crossoverYear) - CONFIG.startYear : null;
+            console.log('Chart annotation debug:', { crossoverYear, currentYear, currentYearIndex, crossoverYearIndex, hasAnnotationPlugin: !!annotationPlugin });
 
-            // Find crossover index for annotation
+            // Find crossover index for annotation (legacy - used elsewhere)
             const crossoverIndex = crossoverYear ? Math.floor(crossoverYear - CONFIG.startYear) : null;
 
             state.chart = new Chart(ctx, {
@@ -1072,7 +1733,7 @@
                     labels: data.years,
                     datasets: [
                         {
-                            label: 'Cumulative Human Brain ops/s',
+                            label: getHumanDataLabel(),
                             data: data.humanData,
                             borderColor: '#ff6b6b',
                             backgroundColor: 'rgba(255, 107, 107, 0.1)',
@@ -1082,7 +1743,7 @@
                             borderWidth: 2
                         },
                         {
-                            label: 'Cumulative Chip FLOPS',
+                            label: getChipDataLabel(),
                             data: data.chipData,
                             borderColor: '#4ecdc4',
                             backgroundColor: 'rgba(78, 205, 196, 0.1)',
@@ -1110,27 +1771,7 @@
                                 maxTicksLimit: 10
                             }
                         },
-                        y: {
-                            type: 'logarithmic',
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)'
-                            },
-                            ticks: {
-                                color: '#a0a0a0',
-                                callback: function(value) {
-                                    const exp = Math.log10(value);
-                                    if (Number.isInteger(exp) && exp % 5 === 0) {
-                                        return '10^' + exp;
-                                    }
-                                    return '';
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Cumulative ops/s (log scale)',
-                                color: '#a0a0a0'
-                            }
-                        }
+                        y: getYAxisConfig()
                     },
                     plugins: {
                         legend: {
@@ -1140,23 +1781,66 @@
                             }
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(26, 26, 46, 0.95)',
+                            backgroundColor: 'rgba(26, 26, 46, 0.98)',
                             titleColor: '#e0e0e0',
                             bodyColor: '#a0a0a0',
                             borderColor: '#2a2a3e',
                             borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            position: 'avoidPoint',
+                            yAlign: 'top',
                             callbacks: {
                                 label: function(context) {
                                     return context.dataset.label + ': ' + formatScientific(context.raw);
+                                },
+                                afterBody: function(context) {
+                                    if (!context.length) return [];
+                                    const year = context[0].label;
+                                    const annotations = getAnnotationsForYear(parseInt(year), 1);
+                                    if (annotations.length === 0) return [];
+
+                                    const lines = ['', '— N.B. —'];
+                                    annotations.forEach(a => {
+                                        // Add emoji based on type
+                                        const icon = a.type === 'human' ? '🧠' :
+                                                    a.type === 'chip' ? '💾' :
+                                                    a.type === 'prediction' ? '🔮' : '⚡';
+                                        lines.push(icon + ' ' + a.note);
+                                    });
+                                    return lines;
                                 }
+                            },
+                            footerColor: '#ffd93d',
+                            footerFont: { size: 11, style: 'italic' }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                                    borderColor: 'rgba(78, 205, 196, 0.5)',
+                                    borderWidth: 1
+                                },
+                                mode: 'xy',
                             }
                         },
                         annotation: crossoverYear ? {
                             annotations: {
                                 crossoverLine: {
                                     type: 'line',
-                                    xMin: Math.round(crossoverYear),
-                                    xMax: Math.round(crossoverYear),
+                                    xMin: crossoverYearIndex,
+                                    xMax: crossoverYearIndex,
                                     borderColor: '#ffd93d',
                                     borderWidth: 2,
                                     borderDash: [5, 5],
@@ -1171,18 +1855,19 @@
                                 },
                                 nowLine: {
                                     type: 'line',
-                                    xMin: new Date().getFullYear(),
-                                    xMax: new Date().getFullYear(),
-                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                    borderWidth: 1,
-                                    borderDash: [3, 3],
+                                    xMin: currentYearIndex,
+                                    xMax: currentYearIndex,
+                                    borderColor: '#4ecdc4',
+                                    borderWidth: 3,
+                                    borderDash: [6, 4],
                                     label: {
                                         display: true,
-                                        content: 'Now',
-                                        position: 'end',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: '#a0a0a0',
-                                        font: { size: 10 }
+                                        content: 'TODAY',
+                                        position: 'start',
+                                        backgroundColor: '#4ecdc4',
+                                        color: '#0a0a0f',
+                                        font: { size: 12, weight: 'bold' },
+                                        padding: 6
                                     }
                                 }
                             }
@@ -1190,18 +1875,19 @@
                             annotations: {
                                 nowLine: {
                                     type: 'line',
-                                    xMin: new Date().getFullYear(),
-                                    xMax: new Date().getFullYear(),
-                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                    borderWidth: 1,
-                                    borderDash: [3, 3],
+                                    xMin: currentYearIndex,
+                                    xMax: currentYearIndex,
+                                    borderColor: '#4ecdc4',
+                                    borderWidth: 3,
+                                    borderDash: [6, 4],
                                     label: {
                                         display: true,
-                                        content: 'Now',
-                                        position: 'end',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        color: '#a0a0a0',
-                                        font: { size: 10 }
+                                        content: 'TODAY',
+                                        position: 'start',
+                                        backgroundColor: '#4ecdc4',
+                                        color: '#0a0a0f',
+                                        font: { size: 12, weight: 'bold' },
+                                        padding: 6
                                     }
                                 }
                             }
@@ -1250,6 +1936,12 @@
 
             counterState.lastUpdate = Date.now();
             counterState.initialized = true;
+
+            // Initialize session start values (only once, on first page load)
+            if (sessionStart.humanOps === 0) {
+                sessionStart.humanOps = counterState.humanOps;
+                sessionStart.chipOps = counterState.chipOps;
+            }
         }
 
         function updateCounters() {
@@ -1278,6 +1970,36 @@
                 '+' + formatScientific(counterState.humanRate * 1000) + ' ops/sec (' + birthsPerSecond.toFixed(1) + ' births/sec)';
             document.getElementById('chip-rate').textContent =
                 '+' + formatScientific(counterState.chipRate * 1000) + ' ops/sec (continuous production)';
+
+            // Update session stats
+            updateSessionStats();
+        }
+
+        function updateSessionStats() {
+            const brainOps = CONFIG.brainEstimates[state.brainEstimate];
+            const elapsedMs = Date.now() - sessionStart.timestamp;
+            const elapsedSec = elapsedMs / 1000;
+
+            // Calculate brains born since session start (using current birth rate)
+            const currentYear = new Date().getFullYear();
+            const birthsPerSecond = getBirthsForYear(currentYear) * 1e6 / (365.25 * 24 * 3600);
+            const brainsBorn = birthsPerSecond * elapsedSec;
+
+            // Calculate FLOPS manufactured since session start
+            const chipFLOPSThisYear = getChipFLOPSForYear(currentYear);
+            const flopsPerSecond = chipFLOPSThisYear / (365.25 * 24 * 3600);
+            const flopsMade = flopsPerSecond * elapsedSec;
+
+            // Format for display
+            document.getElementById('session-brains').textContent = formatSessionCount(brainsBorn);
+            document.getElementById('session-flops').textContent = formatScientific(flopsMade);
+        }
+
+        function formatSessionCount(value) {
+            if (value < 1) return value.toFixed(2);
+            if (value < 1000) return Math.floor(value).toLocaleString();
+            if (value < 1e6) return (value / 1000).toFixed(1) + 'K';
+            return (value / 1e6).toFixed(2) + 'M';
         }
 
         function resetCounters() {
@@ -1347,6 +2069,53 @@
                 sliderValue.textContent = defaultValue + '%';
                 updateAll();
             });
+
+            // Calculus controls - integrate/differentiate
+            setupCalculusControls();
+        }
+
+        function setupCalculusControls() {
+            const calcUp = document.getElementById('calc-up');
+            const calcDown = document.getElementById('calc-down');
+            const calcLevel = document.getElementById('calc-level');
+
+            function updateCalculusUI() {
+                calcLevel.textContent = getCalculusLabel();
+                // Disable up button at level 0 (cumulative)
+                calcUp.disabled = state.calculusLevel >= 0;
+                // Disable down button at level -2 (acceleration)
+                calcDown.disabled = state.calculusLevel <= -2;
+            }
+
+            // Integrate (up) - go towards cumulative
+            calcUp.addEventListener('click', () => {
+                if (state.calculusLevel < 0) {
+                    state.calculusLevel++;
+                    updateCalculusUI();
+                    updateChart();
+                    trackEvent('interaction', 'calculus_integrate', { level: state.calculusLevel });
+                }
+            });
+
+            // Differentiate (down) - go towards acceleration
+            calcDown.addEventListener('click', () => {
+                if (state.calculusLevel > -2) {
+                    state.calculusLevel--;
+                    updateCalculusUI();
+                    updateChart();
+                    trackEvent('interaction', 'calculus_differentiate', { level: state.calculusLevel });
+                }
+            });
+
+            // Reset zoom button
+            document.getElementById('reset-zoom').addEventListener('click', () => {
+                if (state.chart) {
+                    state.chart.resetZoom();
+                    trackEvent('interaction', 'reset_zoom');
+                }
+            });
+
+            updateCalculusUI();
         }
 
         function updateAll() {
@@ -1362,10 +2131,15 @@
         // ============================================
 
         function updateURL() {
+            const existing = new URLSearchParams(window.location.search);
             const params = new URLSearchParams();
             params.set('brain', state.brainEstimate);
             params.set('birth', state.birthScenario);
             params.set('moore', Math.round(state.mooresLawRate * 100));
+            // Preserve privacy opt-out flag if present
+            if (existing.get('noanalytics') === '1') {
+                params.set('noanalytics', '1');
+            }
 
             const newURL = window.location.pathname + '?' + params.toString();
             history.replaceState(null, '', newURL);
@@ -1550,6 +2324,8 @@
             loadFromURL();
             createChart();
             setupControls();
+            setupDownloadButtons();
+            setupPrivacyControls();
             setupSuggestionForm();
             updateCounters();
             updateCrossover();
@@ -1568,57 +2344,99 @@
         // ANALYTICS TRACKING
         // ============================================
 
-        const ANALYTICS_ENDPOINT = 'https://tnu93m4j91.execute-api.ca-central-1.amazonaws.com/analytics/event';
+        const ANALYTICS_ENDPOINT = 'https://tnu93m4j91.execute-api.ca-central-1.amazonaws.com/t/e';
 
-        // Generate or retrieve visitor ID
+        function analyticsOptedOut() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('noanalytics') === '1') return true;
+                return localStorage.getItem('foomist_analytics_optout') === '1';
+            } catch {
+                return false;
+            }
+        }
+
+        // Generate or retrieve visitor ID (persistent across sessions)
         function getVisitorId() {
             let visitorId = localStorage.getItem('foomist_visitor_id');
             if (!visitorId) {
-                visitorId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                visitorId = crypto.randomUUID ? crypto.randomUUID() :
+                    'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 localStorage.setItem('foomist_visitor_id', visitorId);
             }
             return visitorId;
         }
 
-        // Generate or retrieve session ID
+        // Generate or retrieve session ID (cleared on browser close)
         function getSessionId() {
             let sessionId = sessionStorage.getItem('foomist_session_id');
             if (!sessionId) {
-                sessionId = 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                sessionId = crypto.randomUUID ? crypto.randomUUID() :
+                    's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 sessionStorage.setItem('foomist_session_id', sessionId);
+                sessionStorage.setItem('foomist_session_start', Date.now().toString());
             }
             return sessionId;
         }
 
+        // Get session duration in seconds
+        function getSessionDuration() {
+            const start = sessionStorage.getItem('foomist_session_start');
+            return start ? Math.round((Date.now() - parseInt(start, 10)) / 1000) : 0;
+        }
+
+        // Get client info for analytics
+        function getClientInfo() {
+            return {
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                screen: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookiesEnabled: navigator.cookieEnabled
+            };
+        }
+
         // Track an event
         function trackEvent(eventType, eventName, metadata = {}) {
+            if (analyticsOptedOut()) return;
             try {
                 const data = {
                     visitorId: getVisitorId(),
                     sessionId: getSessionId(),
+                    sessionDuration: getSessionDuration(),
                     eventType: eventType,
                     eventName: eventName,
                     page: window.location.pathname,
                     referrer: document.referrer || '',
                     userAgent: navigator.userAgent,
-                    screenSize: `${window.screen.width}x${window.screen.height}`,
-                    metadata: metadata
+                    clientInfo: getClientInfo(),
+                    metadata: metadata,
+                    // Current app state for context
+                    appState: {
+                        brainEstimate: state.brainEstimate,
+                        birthScenario: state.birthScenario,
+                        mooresLawRate: Math.round(state.mooresLawRate * 100) + '%',
+                        calculusLevel: state.calculusLevel
+                    }
                 };
 
-                // Use sendBeacon for reliability, fallback to fetch
+                // Use fetch with keepalive for reliable analytics
                 const payload = JSON.stringify(data);
-                if (navigator.sendBeacon) {
-                    navigator.sendBeacon(ANALYTICS_ENDPOINT, payload);
-                } else {
-                    fetch(ANALYTICS_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: payload,
-                        keepalive: true
-                    }).catch(() => {});
-                }
+                console.log('[Analytics] Sending:', eventType, eventName);
+                fetch(ANALYTICS_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload,
+                    keepalive: true,
+                    mode: 'cors'
+                }).then(r => {
+                    console.log('[Analytics] Response:', r.status);
+                }).catch(e => {
+                    console.error('[Analytics] Error:', e);
+                });
             } catch (e) {
-                // Silently fail - analytics should never break the site
+                console.error('[Analytics] Exception:', e);
             }
         }
 
@@ -1629,6 +2447,115 @@
                 title: document.title
             });
         });
+
+        // ============================================
+        // DOWNLOAD DATA
+        // ============================================
+
+        function getDownloadMetadata() {
+            return {
+                exportedAt: new Date().toISOString(),
+                site: window.location.origin,
+                state: {
+                    brainEstimate: state.brainEstimate,
+                    birthScenario: state.birthScenario,
+                    mooresLawRate: state.mooresLawRate,
+                    calculusLevel: state.calculusLevel,
+                    calculusLabel: getCalculusLabel()
+                },
+                range: {
+                    startYear: CONFIG.startYear,
+                    endYear: CONFIG.endYear
+                }
+            };
+        }
+
+        function getDownloadRows() {
+            const data = generateChartData();
+            return data.years.map((year, idx) => ({
+                year,
+                human: data.humanData[idx],
+                chip: data.chipData[idx]
+            }));
+        }
+
+        function rowsToCSV(meta, rows) {
+            const header = [
+                '# foom.ist export',
+                `# exportedAt=${meta.exportedAt}`,
+                `# brainEstimate=${meta.state.brainEstimate}`,
+                `# birthScenario=${meta.state.birthScenario}`,
+                `# mooresLawRate=${meta.state.mooresLawRate}`,
+                `# calculusLevel=${meta.state.calculusLevel}`,
+                `# calculusLabel=${meta.state.calculusLabel}`,
+                'year,human,chip'
+            ].join('\n');
+            const body = rows.map(r => `${r.year},${r.human},${r.chip}`).join('\n');
+            return header + '\n' + body + '\n';
+        }
+
+        function triggerDownload(filename, contents, mimeType) {
+            const blob = new Blob([contents], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+        }
+
+        function setupDownloadButtons() {
+            const csvBtn = document.getElementById('download-csv');
+            const jsonBtn = document.getElementById('download-json');
+            if (!csvBtn || !jsonBtn) return;
+
+            csvBtn.addEventListener('click', () => {
+                const meta = getDownloadMetadata();
+                const rows = getDownloadRows();
+                const csv = rowsToCSV(meta, rows);
+                const fname = `foomist_chart_${meta.state.brainEstimate}_${meta.state.birthScenario}_${Math.round(meta.state.mooresLawRate * 100)}pct_level${meta.state.calculusLevel}.csv`;
+                triggerDownload(fname, csv, 'text/csv;charset=utf-8');
+                trackEvent('interaction', 'download_csv', { filename: fname });
+            });
+
+            jsonBtn.addEventListener('click', () => {
+                const meta = getDownloadMetadata();
+                const rows = getDownloadRows();
+                const payload = JSON.stringify({ meta, rows }, null, 2);
+                const fname = `foomist_chart_${meta.state.brainEstimate}_${meta.state.birthScenario}_${Math.round(meta.state.mooresLawRate * 100)}pct_level${meta.state.calculusLevel}.json`;
+                triggerDownload(fname, payload, 'application/json;charset=utf-8');
+                trackEvent('interaction', 'download_json', { filename: fname });
+            });
+        }
+
+        // ============================================
+        // PRIVACY CONTROLS
+        // ============================================
+
+        function setupPrivacyControls() {
+            const checkbox = document.getElementById('analytics-optout');
+            if (!checkbox) return;
+
+            checkbox.checked = analyticsOptedOut();
+
+            checkbox.addEventListener('change', () => {
+                const optingOut = checkbox.checked;
+                try {
+                    if (optingOut) {
+                        // Record the intent before disabling.
+                        trackEvent('interaction', 'analytics_optout', { enabled: false });
+                        localStorage.setItem('foomist_analytics_optout', '1');
+                    } else {
+                        localStorage.setItem('foomist_analytics_optout', '0');
+                        trackEvent('interaction', 'analytics_optout', { enabled: true });
+                    }
+                } catch (e) {
+                    console.error('Failed to persist analytics opt-out:', e);
+                }
+            });
+        }
 
         // Track brain estimate changes
         document.querySelectorAll('[data-brain]').forEach(btn => {
@@ -1717,10 +2644,101 @@
         const pageLoadTime = Date.now();
         window.addEventListener('beforeunload', () => {
             const timeOnPage = Math.round((Date.now() - pageLoadTime) / 1000);
-            trackEvent('interaction', 'page_exit', {
+            trackEvent('session', 'page_exit', {
                 timeOnPageSeconds: timeOnPage,
-                maxScrollDepth: maxScrollDepth + '%'
+                maxScrollDepth: maxScrollDepth + '%',
+                sessionDuration: getSessionDuration()
             });
+        });
+
+        // Track all external link clicks
+        document.querySelectorAll('a[href^="http"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const url = link.href;
+                const text = link.textContent.trim().substring(0, 50);
+                trackEvent('link_click', 'external_link', {
+                    url: url,
+                    text: text,
+                    section: link.closest('.source-section')?.querySelector('.source-title')?.textContent || 'unknown'
+                });
+            });
+        });
+
+        // Track definitions panel toggle
+        const definitionsPanel = document.querySelector('.definitions-panel');
+        if (definitionsPanel) {
+            definitionsPanel.addEventListener('toggle', (e) => {
+                trackEvent('interaction', 'definitions_panel_toggle', {
+                    open: definitionsPanel.open
+                });
+            });
+        }
+
+        // Track chart legend clicks (dataset visibility toggle)
+        // This is handled via Chart.js plugin
+        const originalLegendClick = Chart.defaults.plugins.legend.onClick;
+        Chart.defaults.plugins.legend.onClick = function(e, legendItem, legend) {
+            const datasetLabel = legendItem.text;
+            const isHidden = legend.chart.isDatasetVisible(legendItem.datasetIndex);
+            trackEvent('chart', 'legend_toggle', {
+                dataset: datasetLabel,
+                action: isHidden ? 'hide' : 'show'
+            });
+            // Call original handler
+            if (originalLegendClick) {
+                originalLegendClick.call(this, e, legendItem, legend);
+            }
+        };
+
+        // Track chart zoom events (debounced)
+        let zoomTimeout;
+        function trackZoomEvent(chart, type) {
+            clearTimeout(zoomTimeout);
+            zoomTimeout = setTimeout(() => {
+                const xScale = chart.scales.x;
+                const yScale = chart.scales.y;
+                trackEvent('chart', 'zoom_' + type, {
+                    xMin: Math.round(xScale.min),
+                    xMax: Math.round(xScale.max),
+                    yMin: yScale.min?.toExponential(2),
+                    yMax: yScale.max?.toExponential(2)
+                });
+            }, 500);
+        }
+
+        // Hook into chart zoom plugin events
+        const originalZoomComplete = Chart.defaults.plugins.zoom?.zoom?.onZoomComplete;
+        if (Chart.defaults.plugins.zoom) {
+            Chart.defaults.plugins.zoom.zoom.onZoomComplete = function({chart}) {
+                trackZoomEvent(chart, 'zoom');
+                if (originalZoomComplete) originalZoomComplete({chart});
+            };
+            Chart.defaults.plugins.zoom.pan.onPanComplete = function({chart}) {
+                trackZoomEvent(chart, 'pan');
+            };
+        }
+
+        // Track annotation/tooltip views for significant years
+        let lastAnnotationYear = null;
+        const annotationYears = new Set(CONFIG.annotations.map(a => a.year));
+        document.getElementById('mips-chart')?.addEventListener('mousemove', (e) => {
+            if (!state.chart) return;
+            const points = state.chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, true);
+            if (points.length > 0) {
+                const year = parseInt(state.chart.data.labels[points[0].index]);
+                // Check if near an annotation year (±1)
+                for (const annoYear of annotationYears) {
+                    if (Math.abs(year - annoYear) <= 1 && lastAnnotationYear !== annoYear) {
+                        lastAnnotationYear = annoYear;
+                        const annotations = CONFIG.annotations.filter(a => a.year === annoYear);
+                        trackEvent('chart', 'annotation_viewed', {
+                            year: annoYear,
+                            annotations: annotations.map(a => a.type + ': ' + a.note.substring(0, 50)).join('; ')
+                        });
+                        break;
+                    }
+                }
+            }
         });
     </script>
 </body>

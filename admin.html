@@ -317,6 +317,78 @@
             color: var(--text-secondary);
         }
 
+        .clickable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .clickable:hover {
+            color: var(--accent-chip);
+        }
+
+        .controls-row input[type="text"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .controls-row input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-chip);
+        }
+
+        td[onclick]:hover {
+            color: var(--accent-chip);
+            text-decoration: underline;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 2px 4px;
+            font-size: 0.7rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .copy-btn:hover {
+            opacity: 1;
+            color: var(--accent-chip);
+        }
+
+        .id-cell {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-chip);
+            color: var(--bg-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         @media (max-width: 600px) {
             .header {
                 flex-direction: column;
@@ -335,6 +407,9 @@
     </style>
 </head>
 <body>
+    <!-- Toast notification -->
+    <div class="toast" id="toast">Copied!</div>
+
     <!-- Login Box -->
     <div class="login-box active">
         <div class="login-container">
@@ -344,6 +419,10 @@
                 <div class="form-group">
                     <label for="password">Admin Password</label>
                     <input type="password" id="password" required autofocus>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="rememberMe" style="width: auto; margin: 0;">
+                    <label for="rememberMe" style="margin: 0; cursor: pointer;">Stay logged in until logout</label>
                 </div>
                 <button type="submit" class="btn" id="loginBtn">Login</button>
             </form>
@@ -372,6 +451,23 @@
                     </select>
                 </div>
                 <div>
+                    <label>Session:</label>
+                    <select id="sessionFilter" onchange="loadAnalytics()">
+                        <option value="">All Sessions</option>
+                    </select>
+                </div>
+                <div>
+                    <label>IP:</label>
+                    <input type="text" id="ipFilter" placeholder="Filter by IP" style="width: 120px;" onchange="loadAnalytics()">
+                </div>
+                <div>
+                    <label>Visitor:</label>
+                    <input type="text" id="visitorFilter" placeholder="Filter by visitor" style="width: 120px;" onchange="loadAnalytics()">
+                </div>
+                <button onclick="clearFilters()" class="btn btn-small" style="background: var(--bg-tertiary); color: var(--text-secondary);">
+                    Clear Filters
+                </button>
+                <div>
                     <label>Auto-refresh:</label>
                     <select id="autoRefresh" onchange="setAutoRefresh()">
                         <option value="0">Off</option>
@@ -384,6 +480,7 @@
                     <span id="refreshIcon">&#x21bb;</span> Refresh
                 </button>
                 <span class="last-refresh" id="lastRefresh"></span>
+                <span class="last-refresh" id="timezoneIndicator"></span>
             </div>
 
             <!-- Stats Grid -->
@@ -433,24 +530,48 @@
                 </div>
             </div>
 
+            <!-- Sessions List -->
+            <div class="section" id="sessionsSection">
+                <h2>Sessions</h2>
+                <div class="table-container" style="max-height: 300px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Visitor</th>
+                                <th>IP</th>
+                                <th>Location</th>
+                                <th>Events</th>
+                                <th>First Seen</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTable">
+                            <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Recent Events Table -->
             <div class="section">
-                <h2>Recent Events</h2>
+                <h2>Recent Events <span id="eventsFilterIndicator" style="font-size: 0.7rem; color: var(--accent-crossover);"></span></h2>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>Time</th>
+                                <th>Session</th>
                                 <th>Location</th>
                                 <th>IP</th>
                                 <th>Visitor</th>
                                 <th>Type</th>
                                 <th>Event</th>
-                                <th>Page</th>
+                                <th>Details</th>
                             </tr>
                         </thead>
                         <tbody id="eventsTable">
-                            <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                            <tr><td colspan="8" class="empty-state">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -471,6 +592,7 @@
         async function handleLogin(event) {
             event.preventDefault();
             const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
             const loginBtn = document.getElementById('loginBtn');
             const errorEl = document.getElementById('loginError');
 
@@ -482,7 +604,7 @@
                 const response = await fetch(`${API_BASE}/admin/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ password, rememberMe })
                 });
 
                 const data = await response.json();
@@ -526,15 +648,34 @@
         // ANALYTICS
         // ============================================
 
+        // Track current filters
+        let currentFilters = {
+            sessionId: '',
+            ip: '',
+            visitorId: ''
+        };
+
         async function loadAnalytics() {
             const days = document.getElementById('daysFilter').value;
+            const sessionFilter = document.getElementById('sessionFilter').value;
+            const ipFilter = document.getElementById('ipFilter').value.trim();
+            const visitorFilter = document.getElementById('visitorFilter').value.trim();
             const refreshIcon = document.getElementById('refreshIcon');
+
+            // Update current filters
+            currentFilters = { sessionId: sessionFilter, ip: ipFilter, visitorId: visitorFilter };
 
             // Show loading state
             refreshIcon.style.animation = 'spin 1s linear infinite';
 
             try {
-                const response = await fetch(`${API_BASE}/admin/analytics?days=${days}`, {
+                // Build query string with filters
+                const params = new URLSearchParams({ days });
+                if (sessionFilter) params.append('sessionId', sessionFilter);
+                if (ipFilter) params.append('ip', ipFilter);
+                if (visitorFilter) params.append('visitorId', visitorFilter);
+
+                const response = await fetch(`${API_BASE}/admin/analytics?${params}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
@@ -551,7 +692,10 @@
                 renderTopEvents(data.topEvents);
                 renderTopLocations(data.recentEvents);
                 renderEventsByDay(data.byDay);
+                renderSessionsTable(data.sessions || []);
                 renderEventsTable(data.recentEvents);
+                updateSessionDropdown(data.sessions || []);
+                updateFilterIndicator();
 
                 document.getElementById('lastRefresh').textContent =
                     'Updated: ' + new Date().toLocaleTimeString();
@@ -561,6 +705,46 @@
             } finally {
                 refreshIcon.style.animation = '';
             }
+        }
+
+        function clearFilters() {
+            document.getElementById('sessionFilter').value = '';
+            document.getElementById('ipFilter').value = '';
+            document.getElementById('visitorFilter').value = '';
+            loadAnalytics();
+        }
+
+        function updateFilterIndicator() {
+            const indicator = document.getElementById('eventsFilterIndicator');
+            const activeFilters = [];
+            if (currentFilters.sessionId) activeFilters.push('session');
+            if (currentFilters.ip) activeFilters.push('IP');
+            if (currentFilters.visitorId) activeFilters.push('visitor');
+
+            if (activeFilters.length > 0) {
+                indicator.textContent = `(filtered by ${activeFilters.join(', ')})`;
+            } else {
+                indicator.textContent = '';
+            }
+        }
+
+        function updateSessionDropdown(sessions) {
+            const dropdown = document.getElementById('sessionFilter');
+            const currentValue = dropdown.value;
+
+            // Keep the "All Sessions" option and add sessions
+            dropdown.innerHTML = '<option value="">All Sessions</option>';
+
+            sessions.forEach(session => {
+                const shortId = session.sessionId ? session.sessionId.substring(0, 8) + '...' : 'unknown';
+                const loc = session.geo ? (session.geo.city || session.geo.country || '') : '';
+                const label = `${shortId} (${session.eventCount} events${loc ? ', ' + loc : ''})`;
+                const option = document.createElement('option');
+                option.value = session.sessionId;
+                option.textContent = label;
+                if (session.sessionId === currentValue) option.selected = true;
+                dropdown.appendChild(option);
+            });
         }
 
         function renderStats(data) {
@@ -652,21 +836,112 @@
             `;
         }
 
+        function renderSessionsTable(sessions) {
+            const tbody = document.getElementById('sessionsTable');
+
+            if (!sessions || sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No sessions yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sessions.map(session => {
+                const sessionId = session.sessionId || '-';
+                const shortSession = sessionId.length > 16 ? sessionId.substring(0, 16) + '...' : sessionId;
+                const visitorId = session.visitorId || '-';
+                const shortVisitor = visitorId.length > 16 ? visitorId.substring(0, 16) + '...' : visitorId;
+                const ip = session.ip || '-';
+                const eventCount = session.eventCount || 0;
+                const firstSeen = formatLocalDate(session.firstSeen);
+
+                // Build location string
+                let location = '-';
+                if (session.geo && session.geo.country) {
+                    location = session.geo.city
+                        ? `${session.geo.city}, ${session.geo.countryCode}`
+                        : session.geo.country;
+                }
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="id-cell">
+                                <span title="${escapeHtml(sessionId)}" style="cursor: pointer;" onclick="filterBySession('${escapeHtml(sessionId)}')">${escapeHtml(shortSession)}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(sessionId)}', event)" title="Copy full ID">&#x2398;</button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="id-cell">
+                                <span title="${escapeHtml(visitorId)}" style="cursor: pointer;" onclick="filterByVisitor('${escapeHtml(visitorId)}')">${escapeHtml(shortVisitor)}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(visitorId)}', event)" title="Copy full ID">&#x2398;</button>
+                            </div>
+                        </td>
+                        <td style="font-size: 0.75rem; cursor: pointer;" onclick="filterByIP('${escapeHtml(ip)}')">${escapeHtml(ip)}</td>
+                        <td>${escapeHtml(location)}</td>
+                        <td>${eventCount}</td>
+                        <td style="white-space: nowrap; font-size: 0.75rem;">${firstSeen}</td>
+                        <td>
+                            <button class="btn btn-small" style="padding: 4px 8px; font-size: 0.7rem;" onclick="filterBySession('${escapeHtml(sessionId)}')">View</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterBySession(sessionId) {
+            document.getElementById('sessionFilter').value = sessionId;
+            loadAnalytics();
+        }
+
+        function filterByIP(ip) {
+            document.getElementById('ipFilter').value = ip;
+            loadAnalytics();
+        }
+
+        function filterByVisitor(visitorId) {
+            document.getElementById('visitorFilter').value = visitorId;
+            loadAnalytics();
+        }
+
+        function copyToClipboard(text, event) {
+            if (event) event.stopPropagation();
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied: ' + text);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Copied: ' + text);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
         function renderEventsTable(events) {
             const tbody = document.getElementById('eventsTable');
 
             if (!events || events.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No events yet</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No events yet</td></tr>';
                 return;
             }
 
             tbody.innerHTML = events.map(evt => {
-                const time = evt.timestamp ? new Date(evt.timestamp).toLocaleString() : '-';
+                const time = formatLocalTime(evt.timestamp);
+                const sessionId = evt.sessionId || '-';
+                const shortSession = sessionId.length > 12 ? sessionId.substring(0, 12) + '...' : sessionId;
                 const visitorId = evt.visitorId || '-';
                 const shortVisitor = visitorId.length > 12 ? visitorId.substring(0, 12) + '...' : visitorId;
                 const eventType = evt.eventType || 'unknown';
                 const eventName = evt.eventName || '-';
-                const page = evt.page || '/';
                 const ip = evt.ip || '-';
 
                 // Build location string
@@ -677,18 +952,86 @@
                         : evt.geo.country;
                 }
 
+                // Build details string from metadata, appState, clientInfo
+                let details = [];
+                if (evt.clientInfo && evt.clientInfo.timezone) {
+                    details.push(`tz: ${evt.clientInfo.timezone.split('/').pop()}`);
+                }
+                if (evt.metadata) {
+                    if (evt.metadata.target) details.push(`target: ${evt.metadata.target}`);
+                    if (evt.metadata.href) details.push(`href: ${evt.metadata.href.substring(0, 30)}...`);
+                    if (evt.metadata.action) details.push(`action: ${evt.metadata.action}`);
+                    if (evt.metadata.dataset) details.push(`dataset: ${evt.metadata.dataset}`);
+                    if (evt.metadata.direction) details.push(`dir: ${evt.metadata.direction}`);
+                    if (evt.metadata.factor) details.push(`factor: ${evt.metadata.factor}`);
+                    if (evt.metadata.year) details.push(`year: ${evt.metadata.year}`);
+                }
+                if (evt.appState) {
+                    if (evt.appState.calculusLevel !== undefined) {
+                        const calcNames = {0: '∫', '-1': 'd/dt', '-2': 'd²/dt²'};
+                        details.push(`calc: ${calcNames[evt.appState.calculusLevel] || evt.appState.calculusLevel}`);
+                    }
+                    if (evt.appState.brainEstimate) details.push(`brain: ${evt.appState.brainEstimate}`);
+                }
+                if (evt.clientInfo && evt.clientInfo.viewport) {
+                    details.push(`${evt.clientInfo.viewport}`);
+                }
+
+                const detailsStr = details.length > 0 ? details.slice(0, 3).join(', ') : '-';
+
                 return `
                     <tr>
-                        <td style="white-space: nowrap;">${time}</td>
-                        <td>${escapeHtml(location)}</td>
-                        <td style="font-size: 0.75rem; color: var(--text-secondary);">${escapeHtml(ip)}</td>
-                        <td title="${escapeHtml(visitorId)}">${escapeHtml(shortVisitor)}</td>
+                        <td style="white-space: nowrap; font-size: 0.75rem;">${time}</td>
+                        <td style="font-size: 0.75rem;">
+                            <div class="id-cell">
+                                <span title="${escapeHtml(sessionId)}" style="cursor: pointer;" onclick="filterBySession('${escapeHtml(sessionId)}')">${escapeHtml(shortSession)}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(sessionId)}', event)" title="Copy">&#x2398;</button>
+                            </div>
+                        </td>
+                        <td style="font-size: 0.75rem;">${escapeHtml(location)}</td>
+                        <td style="font-size: 0.7rem; color: var(--text-secondary); cursor: pointer;" onclick="filterByIP('${escapeHtml(ip)}')">${escapeHtml(ip)}</td>
+                        <td style="font-size: 0.75rem;">
+                            <div class="id-cell">
+                                <span title="${escapeHtml(visitorId)}" style="cursor: pointer;" onclick="filterByVisitor('${escapeHtml(visitorId)}')">${escapeHtml(shortVisitor)}</span>
+                                <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(visitorId)}', event)" title="Copy">&#x2398;</button>
+                            </div>
+                        </td>
                         <td><span class="event-type ${eventType}">${eventType}</span></td>
-                        <td>${escapeHtml(eventName)}</td>
-                        <td>${escapeHtml(page)}</td>
+                        <td style="font-size: 0.75rem;">${escapeHtml(eventName)}</td>
+                        <td style="font-size: 0.7rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(details.join(', '))}">${escapeHtml(detailsStr)}</td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        // Get user's timezone for display
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        function formatLocalTime(isoString) {
+            if (!isoString) return '-';
+            // Append 'Z' if no timezone indicator (timestamps are stored in UTC)
+            const utcString = isoString.includes('Z') || isoString.includes('+') ? isoString : isoString + 'Z';
+            const date = new Date(utcString);
+            return date.toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function formatLocalDate(isoString) {
+            if (!isoString) return '-';
+            // Append 'Z' if no timezone indicator (timestamps are stored in UTC)
+            const utcString = isoString.includes('Z') || isoString.includes('+') ? isoString : isoString + 'Z';
+            const date = new Date(utcString);
+            return date.toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         function escapeHtml(str) {
@@ -722,6 +1065,10 @@
         // ============================================
 
         window.addEventListener('DOMContentLoaded', () => {
+            // Show timezone indicator
+            const tzShort = userTimezone.split('/').pop().replace(/_/g, ' ');
+            document.getElementById('timezoneIndicator').textContent = `(${tzShort} time)`;
+
             const savedToken = localStorage.getItem('foomist_admin_token');
             if (savedToken) {
                 authToken = savedToken;
